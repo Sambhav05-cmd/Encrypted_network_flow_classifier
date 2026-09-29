@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050914" />
+    <title>{% block title %}FlowLens{% endblock %}</title>
+    <script>
+      // Apply the saved theme before first paint so the page doesn't flash.
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("flowlens-theme") === "light" ? "light" : "dark"
+      } catch (error) {
+        document.documentElement.dataset.theme = "dark"
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    />
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/vendor/htmx.min.js" defer></script>
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <div class="backdrop" aria-hidden="true"></div>
+
+      <header class="bar">
+        <div class="bar-inner">
+          <a class="brand" href="/" aria-label="FlowLens dashboard">
+            <span class="brand-tile">
+              <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="2" y="12" width="3.5" height="10" rx="1.2" fill="var(--m-base)" />
+                <rect x="7.5" y="4" width="3.5" height="18" rx="1.2" fill="var(--m-ib)" />
+                <rect x="13" y="14" width="3.5" height="8" rx="1.2" fill="var(--m-gcd)" />
+                <rect x="18.5" y="8" width="3.5" height="14" rx="1.2" fill="var(--m-gcdib)" />
+              </svg>
+            </span>
+            <span class="brand-text">
+              <span class="brand-name">FlowLens</span>
+              <span class="brand-sub">Encrypted traffic classifier</span>
+            </span>
+          </a>
+
+          <nav class="tabs" aria-label="Sections">
+            {% for id, href, label, glyph in [
+              ("dashboard", "/", "Dashboard", "layout-dashboard"),
+              ("classify", "/classify", "Classify files", "upload-cloud"),
+              ("project", "/project", "Project", "presentation")
+            ] %}
+            <a class="tab" href="{{ href }}" {% if page == id %}aria-current="page"{% endif %}>
+              {{ icon(glyph) }}{{ label }}
+            </a>
+            {% endfor %}
+          </nav>
+
+          <div class="bar-end">
+            <div class="backend backend-online" role="status">
+              <span class="backend-dot" aria-hidden="true"></span>
+              <span class="backend-text">Models loaded</span>
+            </div>
+            <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch colour theme" title="Switch colour theme">
+              <span class="when-dark">{{ icon("sun", 17) }}</span>
+              <span class="when-light">{{ icon("moon", 17) }}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="footer">
+        FlowLens compares No-IBNN, IBNN, Fuzzy-GCD and Fuzzy-GCD + IBNN on
+        encrypted network flows.
+      </footer>
+    </div>
+
+    <div class="tooltip" role="tooltip" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block title %}FlowLens · Project{% endblock %}
+
+{% block content %}
+{% from "macros.html" import legend, grouped_bars, slide, slide_title %}
+{% set slides = [
+  ("overview", "Overview"), ("problem", "The problem"), ("dataset", "Dataset"), ("pipeline", "Pipeline"),
+  ("fuzzy-gcd", "Fuzzy-GCD"), ("architecture", "Architecture"), ("bottleneck", "Information bottleneck"),
+  ("experiments", "Experiments"), ("results", "Overall results"), ("per-class", "Per-class accuracy"),
+  ("gcd-gains", "Where Fuzzy-GCD helps"), ("errors", "Agreement and errors"), ("conclusions", "Conclusions")
+] %}
+{% set d = p.dataset %}
+{% set tr = p.training %}
+
+<div class="deck" data-deck>
+  <nav class="deck-nav" aria-label="Slides">
+    {% for id, title in slides %}
+    <button type="button" data-go="{{ loop.index0 }}" {% if loop.first %}aria-current="step"{% endif %}>
+      <span class="deck-dot" aria-hidden="true"></span><span class="deck-nav-label">{{ title }}</span>
+    </button>
+    {% endfor %}
+  </nav>
+
+  <div class="deck-slides">
+    {% call slide("overview", 1) %}
+    <div class="cover">
+      <span class="hero-badge"><span class="pulse" aria-hidden="true"></span>Encrypted network flow classification</span>
+      <h1 id="overview-title">Classifying encrypted VPN traffic <span class="grad-text">by its shape</span></h1>
+      <p class="cover-lede">
+        Four controlled experiments test whether fuzzy-GCD packet-size features and an
+        information-bottleneck neural network help identify the application behind
+        WireGuard-encrypted flows.
+      </p>
+      <dl class="cover-facts">
+        <div><dt>Best test accuracy</dt><dd>{{ p.best_accuracy }}</dd><span>{{ p.best.model }}</span></div>
+        <div><dt>Gain over the baseline</dt><dd>+{{ p.gain }}</dd><span>vs No-IBNN at {{ p.baseline_accuracy }}</span></div>
+        <div><dt>Test flows</dt><dd>{{ p.test_flows }}</dd><span>30% stratified split</span></div>
+        <div><dt>Applications</dt><dd>{{ d.classes }}</dd><span>classes with at least {{ d.min_class_count }} flows</span></div>
+      </dl>
+    </div>
+    {% endcall %}
+
+    {% call slide("problem", 2) %}
+    {{ slide_title("problem", "Motivation", "The problem") }}
+    <p class="slide-lede">
+      Inside a VPN tunnel the payload and the inner headers are encrypted, so classic
+      deep packet inspection sees nothing useful. The traffic still has a shape: how
+      long a flow lasts, how many bytes move each way, how often packets arrive, and
+      how large they are.
+    </p>
+    <div class="compare">
+      <div class="compare-card compare-hidden">
+        <span class="compare-icon" aria-hidden="true">{{ icon("eye-off", 20) }}</span>
+        <h3>Hidden by encryption</h3>
+        <ul><li>Payload contents</li><li>Inner IP and transport headers</li><li>Application protocol messages</li></ul>
+      </div>
+      <div class="compare-card compare-visible">
+        <span class="compare-icon" aria-hidden="true">{{ icon("eye", 20) }}</span>
+        <h3>Still visible on the outer flow</h3>
+        <ul>
+          <li>Duration, byte and packet counts in each direction</li>
+          <li>Packet and byte rates</li>
+          <li>Packet inter-arrival times (min, mean, std. dev., max)</li>
+          <li>The sequence of the first {{ d.packet_sizes_per_flow }} packet sizes</li>
+        </ul>
+      </div>
+    </div>
+    <p class="slide-note">
+      Goal: predict the application label (for example TLS.Facebook, QUIC or
+      STUN.WhatsAppCall) from the encrypted-side features alone.
+    </p>
+    {% endcall %}
+
+    {% call slide("dataset", 3) %}
+    {{ slide_title("dataset", "Data", "Dataset") }}
+    <div class="slide-split">
+      <div>
+        <dl class="fact-grid">
+          <div><dt>Flows in two capture sessions</dt><dd>{{ "{:,}".format(d.raw_flows) }}</dd></div>
+          <div><dt>Columns per flow</dt><dd>{{ d.columns }}</dd></div>
+          <div><dt>Flows after dropping rare classes</dt><dd>{{ "{:,}".format(d.flows_after_filter) }}</dd></div>
+          <div><dt>Application classes</dt><dd>{{ d.classes }}</dd></div>
+          <div><dt>Training flows (70%)</dt><dd>{{ "{:,}".format(d.train_flows) }}</dd></div>
+          <div><dt>Test flows (30%)</dt><dd>{{ "{:,}".format(d.test_flows) }}</dd></div>
+        </dl>
+        <p class="slide-note">
+          Classes with fewer than {{ d.min_class_count }} flows are removed, and the split is
+          stratified with seed {{ tr.seed }}. The data is heavily imbalanced:
+          {{ p.class_names[0] }} and {{ p.class_names[1] }} alone make up {{ p.largest_two }} of the test set.
+        </p>
+      </div>
+      <figure class="panel chart-panel">
+        <figcaption><h3>Test-set flows per class</h3><p class="muted">The ten largest classes, then everything else</p></figcaption>
+        <div class="sbars">
+          {% for bar in p.class_bars %}
+          <div class="sbar-row" tabindex="0" data-tip='{{ bar.tip|tojson }}'>
+            <span class="gbar-label" title="{{ bar.label }}">{{ bar.label }}</span>
+            <span class="sbar-track"><span class="sbar" style="width: {{ bar.width }}%"></span></span>
+            <span class="sbar-value">{{ bar.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </figure>
+    </div>
+    {% endcall %}
+
+    {% call slide("pipeline", 4) %}
+    {{ slide_title("pipeline", "Method", "Pipeline") }}
+    <ol class="flow-steps">
+      {% for title, text in [
+        ("Flow record", d.columns ~ " columns from the flow exporter"),
+        ("21 outer features", "Encrypted-side statistics only; identifiers and labels are excluded"),
+        ("StandardScaler", "Fitted on the training split only"),
+        ("Fuzzy-GCD swap", "GCD models replace four low-variance features with four packet-size features"),
+        ("5 × 5 map", "21 values zero-padded to 25 and reshaped into one channel"),
+        ("CNN classifier", "Softmax over " ~ d.classes ~ " applications")
+      ] %}
+      <li>
+        <span class="flow-step-num">{{ loop.index }}</span>
+        <h3>{{ title }}</h3>
+        <p>{{ text }}</p>
+        {% if not loop.last %}{{ icon("arrow-right", 18, "flow-step-arrow") }}{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="panel">
+      <h3>Which features the Fuzzy-GCD models give up</h3>
+      <p class="muted">The four features with the lowest training variance are replaced, so the input stays 21 values and the architecture is unchanged.</p>
+      <ul class="swap-list">
+        {% for r in p.replaced %}
+        <li><span class="swap-from">Cell {{ r.index }}: {{ r.feature }}</span>{{ icon("arrow-right", 15) }}<span class="swap-to">GCD {{ r.gcd }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endcall %}
+
+    {% call slide("fuzzy-gcd", 5) %}
+    {{ slide_title("fuzzy-gcd", "Feature engineering", "Fuzzy-GCD") }}
+    <p class="slide-lede">
+      Encrypted records are built from fixed-size blocks, so packet sizes tend to sit near
+      whole multiples of some unit. Fuzzy-GCD finds that unit while tolerating the padding
+      and headers that make an exact greatest common divisor useless.
+    </p>
+    <p class="formula"><span class="formula-text">packet size ≈ n × k + residual</span></p>
+    <div class="slide-split">
+      <ol class="steps">
+        <li><h3>Search k</h3><p>For k from 8 to 256, compare each packet size with its nearest positive multiple of k.</p></li>
+        <li><h3>Measure the residual</h3><p>Take the absolute difference between each packet size and that nearest multiple.</p></li>
+        <li><h3>Pick the best k</h3><p>The k with the smallest mean residual becomes the flow's fuzzy common divisor.</p></li>
+        <li><h3>Build four features</h3><p>k, the mean residual, the residual divided by k, and the share of packets within 4 bytes of a multiple.</p></li>
+      </ol>
+      <figure class="figure">
+        <div class="figure-frame"><img src="/static/img/GCD.png" alt="Packets split into k-byte units with a leftover residual" /></div>
+        <figcaption>Each packet is read as whole k-byte units plus a leftover, the residual shown in red.</figcaption>
+      </figure>
+    </div>
+    {% endcall %}
+
+    {% call slide("architecture", 6) %}
+    {{ slide_title("architecture", "Model", "Architecture") }}
+    <div class="slide-split">
+      <ol class="layers">
+        {% for name, detail, ib in [
+          ("Input", "1 × 5 × 5 feature map", false),
+          ("Conv 5 × 5", "32 channels, ReLU", false),
+          ("Conv 5 × 5", "32 channels, ReLU", false),
+          ("Conv 3 × 3", "64 channels, ReLU", false),
+          ("Conv 3 × 3", "64 channels, ReLU", false),
+          ("Concatenate", "outputs of the two 3 × 3 layers", false),
+          ("Fully connected", "128 units, dropout 0.1", false),
+          ("IB layer", "Stochastic z, " ~ tr.z_dim ~ " dimensions (μ, σ)", true),
+          ("Fully connected", "128 then 256 units", false),
+          ("Output", d.classes ~ "-way softmax", false)
+        ] %}
+        <li class="{{ 'layer-ib' if ib }}"><strong>{{ name }}</strong><span>{{ detail }}</span>{% if ib %}<em>IBNN models only</em>{% endif %}</li>
+        {% endfor %}
+      </ol>
+      <div>
+        <p class="slide-lede">
+          All four models share the convolutional extractor and fully connected layers from
+          Lin and Chen's IBNN. The No-IBNN models remove only the stochastic bottleneck layer
+          and its mutual-information loss, so any difference comes from the bottleneck itself.
+        </p>
+        <dl class="fact-grid fact-grid-2">
+          <div><dt>IBNN parameters</dt><dd>{{ "{:,}".format(tr.parameters["IBNN"]) }}</dd></div>
+          <div><dt>No-IBNN parameters</dt><dd>{{ "{:,}".format(tr.parameters["No-IBNN"]) }}</dd></div>
+        </dl>
+      </div>
+    </div>
+    {% endcall %}
+
+    {% call slide("bottleneck", 7) %}
+    {{ slide_title("bottleneck", "Regularisation", "Information bottleneck") }}
+    <p class="slide-lede">
+      The IBNN adds a stochastic latent layer between the encoder and the classifier and
+      penalises an estimate of the mutual information between the input and that layer.
+    </p>
+    <p class="formula"><span class="formula-text">Loss = cross-entropy + β × I(X; T) + L2</span></p>
+    <div class="notes">
+      {% for heading, text in [
+        ("Compression", "The bottleneck discourages the latent representation from keeping information about the input that the label doesn't need."),
+        ("Prediction", "Cross-entropy makes the latent representation keep what is useful for predicting the application class."),
+        ("The β trade-off", "β balances compression against prediction. A larger β puts more pressure on the information term."),
+        ("Choosing β", "Each IBNN is trained with β in {" ~ p.betas ~ "} and the best β by macro-F1 is kept.")
+      ] %}
+      <section class="note"><h3>{{ heading }}</h3><p>{{ text }}</p></section>
+      {% endfor %}
+    </div>
+    {% endcall %}
+
+    {% call slide("experiments", 8) %}
+    {{ slide_title("experiments", "Design", "Experiments") }}
+    <p class="slide-lede">
+      Four models differ in exactly two switches, so each comparison isolates one idea.
+      Everything else, including the split, preprocessing, optimiser and schedule, is identical.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Model</th><th scope="col">Input</th><th scope="col">IB layer</th><th scope="col">What it tests</th></tr></thead>
+        <tbody>
+          {% for input, ib, purpose in [
+            ("21 flow features", "No", "The baseline"),
+            ("21 flow features", "Yes", "Effect of the bottleneck"),
+            ("17 flow + 4 GCD features", "No", "Effect of the GCD features"),
+            ("17 flow + 4 GCD features", "Yes", "Both together")
+          ] %}
+          <tr>
+            <td><span class="swatch" style="background: {{ MODELS[loop.index0].color }}"></span><strong>{{ MODELS[loop.index0].name }}</strong></td>
+            <td>{{ input }}</td><td>{{ ib }}</td><td class="muted">{{ purpose }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <dl class="setup-chips">
+      {% for term, value in [
+        ("Epochs", tr.epochs), ("Optimiser", tr.optimizer ~ ", learning rate " ~ tr.learning_rate), ("Schedule", tr.schedule),
+        ("Batch size", tr.batch_size), ("Dropout", tr.dropout), ("L2 weight", tr.l2), ("Split", "70 / 30 stratified"), ("Seed", tr.seed)
+      ] %}
+      <div><dt>{{ term }}</dt><dd>{{ value }}</dd></div>
+      {% endfor %}
+    </dl>
+    {% endcall %}
+
+    {% call slide("results", 9) %}
+    {{ slide_title("results", "Results", "Overall results") }}
+    <div class="slide-split">
+      <figure class="panel chart-panel">
+        <figcaption><h3>Test-set metrics by model</h3><p class="muted">Weighted averages over {{ d.classes }} classes, {{ p.test_flows }} flows</p></figcaption>
+        {{ legend() }}
+        {{ grouped_bars(p.metrics_chart, true) }}
+      </figure>
+      <div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Model</th>{% for name in p.metric_names %}<th scope="col" class="num">{{ name }}</th>{% endfor %}</tr></thead>
+            <tbody>
+              {% for row in p.metrics_table %}
+              <tr class="{{ 'row-best' if row.best }}">
+                <td><span class="swatch" style="background: {{ row.model.color }}"></span>{{ row.model.name }}</td>
+                {% for value in row["values"] %}<td class="num">{{ value }}</td>{% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <ul class="takeaways">
+          <li>Fuzzy-GCD adds <b>+{{ p.gcd_gain }}</b> accuracy over the baseline with the same architecture.</li>
+          <li>The bottleneck adds <b>+{{ p.ib_gain }}</b> on the baseline features but only <b>+{{ p.ib_on_gcd }}</b> on top of Fuzzy-GCD.</li>
+        </ul>
+      </div>
+    </div>
+    <details class="figure-details">
+      <summary>Show the original plot from plot.py</summary>
+      <div class="figure-frame"><img src="/static/img/all_models_metrics.png" alt="Accuracy, precision, recall and F1 for the four models" /></div>
+    </details>
+    {% endcall %}
+
+    {% call slide("per-class", 10) %}
+    {{ slide_title("per-class", "Results", "Per-class accuracy") }}
+    <p class="slide-lede">
+      Accuracy per application for the {{ p.heat_rows|length }} largest classes. Darker cells are
+      higher. The large classes are learned well; many small ones are not: {{ p.weak }} of
+      {{ p.class_count }} classes stay below 10% even with Fuzzy-GCD + IBNN.
+    </p>
+    <div class="table-wrap">
+      <table class="heat-table">
+        <thead>
+          <tr>
+            <th scope="col">Application</th><th scope="col" class="num">Test flows</th>
+            {% for m in MODELS %}<th scope="col"><span class="swatch" style="background: {{ m.color }}"></span>{{ m.name }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in p.heat_rows %}
+          <tr>
+            <td><strong>{{ row.label }}</strong></td>
+            <td class="num">{{ row.support }}</td>
+            {% for c in row.cells %}
+            <td tabindex="0" class="heat-cell {{ 'is-strong' if c.strong }} {{ 'is-top' if c.top }}" style="background: color-mix(in srgb, var(--seq) {{ c.mix }}%, transparent)" data-tip='{{ c.tip|tojson }}'>{{ c.text }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="slide-note">The best model for each class is outlined.</p>
+    {% endcall %}
+
+    {% call slide("gcd-gains", 11) %}
+    {{ slide_title("gcd-gains", "Results", "Where Fuzzy-GCD helps") }}
+    <p class="slide-lede">
+      Change in per-class F1 when the four GCD features are added, for the ten classes that
+      gain the most. {{ p.top_gain.label }} benefits most: F1 rises by {{ p.top_gain.vs_no_ibnn }}
+      over No-IBNN and {{ p.top_gain.vs_ibnn }} over IBNN.
+    </p>
+    <div class="slide-split">
+      <figure class="panel chart-panel">
+        <figcaption><h3>F1 change from Fuzzy-GCD features</h3><p class="muted">Bars right of zero are gains, left are losses</p></figcaption>
+        {{ legend(p.gain_series) }}
+        <div class="dbars">
+          {% for row in p.gains.rows %}
+          <div class="gbar-row">
+            <span class="gbar-label" title="{{ row.label }}">{{ row.label }}</span>
+            <div class="gbar-group">
+              {% for bar in row.bars %}
+              <div class="dbar-track" tabindex="0" aria-label="{{ bar.aria }}" data-tip='{{ row.tip|tojson }}'>
+                <div class="dbar {{ 'dbar-neg' if bar.negative }}" style="width: {{ bar.width }}%; background: {{ bar.color }}"></div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+          <div class="gbar-row dbar-axis" aria-hidden="true">
+            <span></span>
+            <div class="dbar-ticks">{% for t in p.gains.ticks %}<span>{{ t }}</span>{% endfor %}</div>
+          </div>
+        </div>
+      </figure>
+      <figure class="figure">
+        <div class="figure-frame"><img src="/static/img/highest_gcd_labels.png" alt="Applications with the largest F1 change from Fuzzy-GCD features" /></div>
+        <figcaption>The same comparison as plotted by plot.py.</figcaption>
+      </figure>
+    </div>
+    {% endcall %}
+
+    {% call slide("errors", 12) %}
+    {{ slide_title("errors", "Analysis", "Agreement and errors") }}
+    <dl class="cover-facts">
+      {% for label, value, note in p.agreement %}
+      <div><dt>{{ label }}</dt><dd>{{ value }}</dd><span>{{ note }}</span></div>
+      {% endfor %}
+    </dl>
+    <div class="slide-split">
+      {% for model, items in p.confusions.items() %}
+      <div class="panel">
+        <h3>Most common mistakes, {{ model }}</h3>
+        <ul class="mixups">
+          {% for c in items %}
+          <li><span class="mix-true">{{ c.true }}</span><span aria-label="predicted as">{{ icon("arrow-right", 14) }}</span><span class="mix-pred">{{ c.predicted }}</span><b>{{ c.count }}</b></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    {% endcall %}
+
+    {% call slide("conclusions", 13) %}
+    {{ slide_title("conclusions", "Summary", "Conclusions") }}
+    <ol class="findings">{% for text in p.findings %}<li>{{ text }}</li>{% endfor %}</ol>
+    <div class="cta-row">
+      <a class="btn btn-primary btn-lg" href="/#simulation">{{ icon("play", 18) }}Run the simulation</a>
+      <a class="btn btn-lg" href="/classify">{{ icon("upload-cloud", 18) }}Classify your own flows</a>
+    </div>
+    {% endcall %}
+  </div>
+
+  <div class="deck-controls">
+    <button type="button" class="icon-btn" data-step="-1" aria-label="Previous slide">{{ icon("chevron-up", 18) }}</button>
+    <span data-deck-position>1 / 13</span>
+    <button type="button" class="icon-btn" data-step="1" aria-label="Next slide">{{ icon("chevron-down", 18) }}</button>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{# The flow currently in the pipeline and the inference stage it has reached. #}
+<span class="sim-card-label">Now classifying</span>
+{% if sample %}
+<strong class="sim-now-label">{{ sample.label or sample.file_name }}</strong>
+<span class="muted sim-now-file" title="{{ sample.file_name }}">Test flow #{{ sample.test_position if sample.test_position is not none else "–" }}, {{ group_tags[sample.group] }}</span>
+<ol class="stages">
+  {% for name in stages %}
+  <li class="{{ 'is-done' if loop.index0 < stage else ('is-active' if loop.index0 == stage else '') }}"><span aria-hidden="true"></span>{{ name }}</li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="muted sim-idle">{{ "All flows classified. Scroll down for the insights." if done else "Choose a scenario and run the simulation." }}</p>
+{% endif %}

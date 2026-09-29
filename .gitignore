@@ -2,10 +2,10 @@
 VPN-nonVPN-Dataset/
 
 # Generated selected flows
-selected_flows/
+/selected_flows/
 
-# Frontend dependencies
-frontend/node_modules/
+# Leftovers from the old React frontend
+frontend/
 node_modules/
 
 # Python virtual environments
@@ -17,13 +17,6 @@ backend/.venv/
 v/
 .venv*/
 
-# npm cache / logs
-.npm/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
 # Python cache
 __pycache__/
 *.py[cod]
@@ -31,12 +24,6 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
-
-# Frontend build
-frontend/dist/
-frontend/build/
-frontend/.vite/
-*.local
 
 # Environment files
 .env

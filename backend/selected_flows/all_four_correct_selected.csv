@@ -1,0 +1,10 @@
+test_position,original_index,true_label,No-IBNN,IBNN,Fuzzy-GCD,Fuzzy-GCD + IBNN,all_four_correct,gcd_only
+1,88117,TLS,TLS,TLS,TLS,TLS,True,False
+2,143799,QUIC,QUIC,QUIC,QUIC,QUIC,True,False
+4,819,DNS,DNS,DNS,DNS,DNS,True,False
+103,70708,Unknown,Unknown,Unknown,Unknown,Unknown,True,False
+192,146694,HTTP,HTTP,HTTP,HTTP,HTTP,True,False
+289,153366,Discord,Discord,Discord,Discord,Discord,True,False
+1400,192618,STUN.TeamsCall,STUN.TeamsCall,STUN.TeamsCall,STUN.TeamsCall,STUN.TeamsCall,True,False
+3026,198628,STUN.WhatsAppCall,STUN.WhatsAppCall,STUN.WhatsAppCall,STUN.WhatsAppCall,STUN.WhatsAppCall,True,False
+4975,25514,TLS.MS_OneDrive,TLS.MS_OneDrive,TLS.MS_OneDrive,TLS.MS_OneDrive,TLS.MS_OneDrive,True,False

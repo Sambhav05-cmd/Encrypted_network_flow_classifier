@@ -1,0 +1,18 @@
+{# One classified flow in the live feed. #}
+{% from "macros.html" import pred %}
+<li class="feed-item">
+  {% if item.error %}
+  <span class="status-error">{{ item.error }}</span>
+  {% else %}
+  <div class="feed-main">
+    <div class="feed-title">
+      <strong>{{ item.label }}</strong>
+      <span class="tag tag-{{ item.group }}">{{ item.group_tag }}</span>
+    </div>
+    <span class="feed-meta">{{ item.meta }}</span>
+  </div>
+  <div class="feed-models">
+    {% for cell in item.cells %}{{ pred(dict(cell, title=cell.model.name ~ ": " ~ cell.class ~ ", " ~ cell.confidence)) }}{% endfor %}
+  </div>
+  {% endif %}
+</li>

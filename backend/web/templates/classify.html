@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}FlowLens · Classify files{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <span class="page-icon" aria-hidden="true">{{ icon("upload-cloud", 26) }}</span>
+  <div>
+    <h1>Classify your own flows</h1>
+    <p>
+      Upload Parquet or CSV flow files. Every row is one flow, and each flow is
+      scored by all four models with the same insights as the dashboard.
+    </p>
+  </div>
+</header>
+
+<section class="intake" aria-label="Files to classify" data-intake>
+  <div class="progress" aria-hidden="true" hidden></div>
+
+  <div class="drop" data-drop>
+    <span class="drop-icon" aria-hidden="true">{{ icon("upload-cloud", 30) }}</span>
+    <p class="drop-title">Drop flow files here</p>
+    <p class="drop-hint">.parquet or .csv, one flow per row. Add as many files as you like.</p>
+    <button type="button" class="btn" data-pick>Choose files</button>
+    <input type="file" multiple accept=".parquet,.csv" hidden data-file-input />
+  </div>
+
+  <div class="queue">
+    <div class="queue-head">
+      <h2>Queue</h2>
+      <span class="muted" data-queue-count>No files yet</span>
+    </div>
+
+    <p class="queue-empty" data-queue-empty>Files you add appear here. Nothing is sent until you classify.</p>
+    <ul class="queue-list" data-queue-list hidden></ul>
+    <p class="queue-rejected" data-queue-rejected hidden></p>
+
+    <div class="queue-actions">
+      <button type="button" class="btn btn-quiet" data-clear disabled>Clear</button>
+      <button type="button" class="btn btn-primary" data-classify disabled>
+        <span data-classify-spinner hidden>{{ icon("loader2", 16, "spin") }}</span>
+        <span data-classify-label>Classify</span>
+      </button>
+    </div>
+
+    <p class="form-error" role="alert" data-classify-error hidden></p>
+  </div>
+</section>
+
+<div id="upload-results"></div>
+
+{# Queue item template, cloned by app.js for each file. #}
+<template id="queue-item">
+  <li class="queue-item">
+    <span class="queue-icon" aria-hidden="true">{{ icon("file-spreadsheet", 17) }}</span>
+    <div class="queue-file">
+      <span class="queue-name"></span>
+      <span class="queue-meta"><span data-size></span>, <span data-status class="muted">Ready</span></span>
+    </div>
+    <button type="button" class="icon-btn" data-remove title="Remove">{{ icon("trash2", 15) }}</button>
+  </li>
+</template>
+{% endblock %}

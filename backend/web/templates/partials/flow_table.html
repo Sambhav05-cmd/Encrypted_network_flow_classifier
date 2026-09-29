@@ -1,0 +1,51 @@
+{# Filter chips and the flow table. Chips reload this fragment through HTMX;
+   rows load the flow's breakdown into #flow-detail. #}
+{% from "macros.html" import pred %}
+<div class="filters" role="group" aria-label="Filter flows">
+  {% for chip in filters %}
+  <button type="button" class="chip" aria-pressed="{{ 'true' if chip.active else 'false' }}"
+          hx-get="/runs/{{ run_id }}/table?filter={{ chip.name }}" hx-target="#flow-table">
+    {{ chip.label }}<span class="chip-count">{{ chip.count }}</span>
+  </button>
+  {% endfor %}
+</div>
+
+<div class="table-wrap">
+  <table class="flows">
+    <thead>
+      <tr>
+        <th scope="col">Flow</th>
+        <th scope="col">True label</th>
+        {% for m in MODELS %}<th scope="col"><span class="swatch" style="background: {{ m.color }}"></span>{{ m.name }}</th>{% endfor %}
+        <th scope="col">Agreement</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set f = row.flow %}
+      {% if f.error %}
+      <tr class="row-error">
+        <td><span class="flow-name">{{ f.flow.flow_id if f.flow else "Row " ~ (f.row + 1) }}</span><span class="flow-source">{{ f.file_name }}, row {{ f.row + 1 }}</span></td>
+        <td colspan="{{ MODELS|length + 2 }}" class="status-error">{{ f.error }}</td>
+      </tr>
+      {% else %}
+      <tr class="row" tabindex="0" aria-selected="{{ 'true' if f.id == selected else 'false' }}"
+          hx-get="/runs/{{ run_id }}/flows/{{ f.id }}" hx-target="#flow-detail" hx-trigger="click, keydown[key=='Enter' || key==' ']">
+        <td><span class="flow-name">{{ f.display_name }}</span><span class="flow-source">{{ f.source }}</span></td>
+        <td class="{{ '' if f.flow.true_label else 'muted' }}">{{ f.flow.true_label or "Not given" }}</td>
+        {% for cell in row.cells %}<td>{{ pred(cell) }}<span class="pred-conf">{{ cell.confidence }}</span></td>{% endfor %}
+        <td>
+          <span class="agreement" title="{{ f.votes }} of 4 models predict {{ f.majority }}">
+            <span class="pips" aria-hidden="true">
+              {% for color in row.pips %}<span class="pip"{% if color %} style="background: {{ color }}; border-color: {{ color }}"{% endif %}></span>{% endfor %}
+            </span>
+            {{ f.votes }} of 4
+          </span>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}<p class="results-empty">No flows match this filter.</p>{% endif %}
+</div>

@@ -1,0 +1,785 @@
+{
+  "dataset": {
+    "raw_flows": 226454,
+    "columns": 126,
+    "flows_after_filter": 225180,
+    "classes": 35,
+    "min_class_count": 100,
+    "train_flows": 157626,
+    "test_flows": 67554,
+    "features": 21,
+    "grid": "5 \u00d7 5",
+    "packet_sizes_per_flow": 255
+  },
+  "training": {
+    "epochs": 30,
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "schedule": "OneCycleLR",
+    "batch_size": 256,
+    "dropout": 0.1,
+    "l2": 0.0001,
+    "z_dim": 128,
+    "betas": [
+      0.01,
+      0.005,
+      0.0001,
+      5e-05,
+      1e-06
+    ],
+    "seed": 42,
+    "parameters": {
+      "IBNN": 583171,
+      "No-IBNN": 550147
+    },
+    "replaced_feature_indices": [
+      5,
+      2,
+      7,
+      1
+    ]
+  },
+  "overall": [
+    {
+      "model": "No-IBNN",
+      "accuracy": 0.7659798087455961,
+      "precision": 0.7098107925070238,
+      "recall": 0.7659798087455961,
+      "f1": 0.7253259116784745
+    },
+    {
+      "model": "IBNN",
+      "accuracy": 0.7842910856499985,
+      "precision": 0.7402728645091856,
+      "recall": 0.7842910856499985,
+      "f1": 0.7463140005251186
+    },
+    {
+      "model": "Fuzzy-GCD",
+      "accuracy": 0.8371525002220446,
+      "precision": 0.7764896037847783,
+      "recall": 0.8371525002220446,
+      "f1": 0.799080552780429
+    },
+    {
+      "model": "Fuzzy-GCD + IBNN",
+      "accuracy": 0.8382331172099358,
+      "precision": 0.7800903376585636,
+      "recall": 0.8382331172099358,
+      "f1": 0.8017676920115415
+    }
+  ],
+  "test_set": {
+    "flows": 67554,
+    "all_four_correct": 49283,
+    "all_four_wrong": 9521,
+    "gcd_only_correct": 3254,
+    "baseline_only_correct": 641,
+    "accuracy": {
+      "No-IBNN": 0.7659798087455961,
+      "IBNN": 0.7842910856499985,
+      "Fuzzy-GCD": 0.8371525002220446,
+      "Fuzzy-GCD + IBNN": 0.8382331172099358
+    }
+  },
+  "per_class": [
+    {
+      "label": "DNS",
+      "support": 25062,
+      "accuracy": {
+        "No-IBNN": 0.9885084989226718,
+        "IBNN": 0.9885483999680792,
+        "Fuzzy-GCD": 0.9911818689649669,
+        "Fuzzy-GCD + IBNN": 0.9883887957864496
+      },
+      "f1": {
+        "No-IBNN": 0.9671865544906204,
+        "IBNN": 0.9696862952308264,
+        "Fuzzy-GCD": 0.9688566469704948,
+        "Fuzzy-GCD + IBNN": 0.968241249242676
+      }
+    },
+    {
+      "label": "TLS",
+      "support": 22694,
+      "accuracy": {
+        "No-IBNN": 0.8428659557592315,
+        "IBNN": 0.8434828589054376,
+        "Fuzzy-GCD": 0.9156164625011016,
+        "Fuzzy-GCD + IBNN": 0.9158808495637614
+      },
+      "f1": {
+        "No-IBNN": 0.757199691229737,
+        "IBNN": 0.7737736726155587,
+        "Fuzzy-GCD": 0.8431324812335159,
+        "Fuzzy-GCD + IBNN": 0.8436326737696601
+      }
+    },
+    {
+      "label": "QUIC",
+      "support": 8722,
+      "accuracy": {
+        "No-IBNN": 0.7053428112818161,
+        "IBNN": 0.7970648933730796,
+        "Fuzzy-GCD": 0.9496675074524191,
+        "Fuzzy-GCD + IBNN": 0.9478330658105939
+      },
+      "f1": {
+        "No-IBNN": 0.6524897915893302,
+        "IBNN": 0.7035725129035523,
+        "Fuzzy-GCD": 0.8754888489588838,
+        "Fuzzy-GCD + IBNN": 0.8752779248279513
+      }
+    },
+    {
+      "label": "Unknown",
+      "support": 1704,
+      "accuracy": {
+        "No-IBNN": 0.6073943661971831,
+        "IBNN": 0.6115023474178404,
+        "Fuzzy-GCD": 0.6003521126760564,
+        "Fuzzy-GCD + IBNN": 0.6109154929577465
+      },
+      "f1": {
+        "No-IBNN": 0.5751597666018339,
+        "IBNN": 0.6328575766778014,
+        "Fuzzy-GCD": 0.5822424587364826,
+        "Fuzzy-GCD + IBNN": 0.6227938976966796
+      }
+    },
+    {
+      "label": "HTTP",
+      "support": 1231,
+      "accuracy": {
+        "No-IBNN": 0.22745735174654752,
+        "IBNN": 0.14947197400487408,
+        "Fuzzy-GCD": 0.1941510966693745,
+        "Fuzzy-GCD + IBNN": 0.20389926888708368
+      },
+      "f1": {
+        "No-IBNN": 0.2530501581563488,
+        "IBNN": 0.2059317291550084,
+        "Fuzzy-GCD": 0.2466460268317853,
+        "Fuzzy-GCD + IBNN": 0.2574358974358974
+      }
+    },
+    {
+      "label": "TLS.MS_OneDrive",
+      "support": 987,
+      "accuracy": {
+        "No-IBNN": 0.03850050658561297,
+        "IBNN": 0.2634245187436677,
+        "Fuzzy-GCD": 0.25430597771023306,
+        "Fuzzy-GCD + IBNN": 0.2563323201621074
+      },
+      "f1": {
+        "No-IBNN": 0.073076923076923,
+        "IBNN": 0.4027885360185902,
+        "Fuzzy-GCD": 0.3557760453579022,
+        "Fuzzy-GCD + IBNN": 0.3489655172413793
+      }
+    },
+    {
+      "label": "TLS.Facebook",
+      "support": 959,
+      "accuracy": {
+        "No-IBNN": 0.145985401459854,
+        "IBNN": 0.005213764337851929,
+        "Fuzzy-GCD": 0.8269030239833159,
+        "Fuzzy-GCD + IBNN": 0.8070907194994786
+      },
+      "f1": {
+        "No-IBNN": 0.2493321460373998,
+        "IBNN": 0.0103734439834024,
+        "Fuzzy-GCD": 0.8338590956887487,
+        "Fuzzy-GCD + IBNN": 0.8121720881427072
+      }
+    },
+    {
+      "label": "TLS.Microsoft365",
+      "support": 744,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.Teams",
+      "support": 630,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.01746031746031746,
+        "Fuzzy-GCD": 0.023809523809523808,
+        "Fuzzy-GCD + IBNN": 0.026984126984126985
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0332326283987915,
+        "Fuzzy-GCD": 0.0451127819548872,
+        "Fuzzy-GCD + IBNN": 0.0512048192771084
+      }
+    },
+    {
+      "label": "WhatsApp",
+      "support": 541,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "Discord",
+      "support": 539,
+      "accuracy": {
+        "No-IBNN": 0.27087198515769945,
+        "IBNN": 0.3098330241187384,
+        "Fuzzy-GCD": 0.24675324675324675,
+        "Fuzzy-GCD + IBNN": 0.24675324675324675
+      },
+      "f1": {
+        "No-IBNN": 0.3663739021329987,
+        "IBNN": 0.420125786163522,
+        "Fuzzy-GCD": 0.3527851458885941,
+        "Fuzzy-GCD + IBNN": 0.3513870541611625
+      }
+    },
+    {
+      "label": "Telegram",
+      "support": 446,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.3654708520179372,
+        "Fuzzy-GCD": 0.2914798206278027,
+        "Fuzzy-GCD + IBNN": 0.3183856502242152
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.4044665012406948,
+        "Fuzzy-GCD": 0.3494623655913978,
+        "Fuzzy-GCD + IBNN": 0.4226190476190476
+      }
+    },
+    {
+      "label": "NTP",
+      "support": 369,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "HTTP.UbuntuONE",
+      "support": 294,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.7721088435374149,
+        "Fuzzy-GCD": 0.047619047619047616,
+        "Fuzzy-GCD + IBNN": 0.47619047619047616
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.5591133004926109,
+        "Fuzzy-GCD": 0.0845921450151057,
+        "Fuzzy-GCD + IBNN": 0.4154302670623145
+      }
+    },
+    {
+      "label": "TLS.Microsoft",
+      "support": 294,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.HuaweiCloud",
+      "support": 280,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "STUN",
+      "support": 244,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "STUN.TeamsCall",
+      "support": 232,
+      "accuracy": {
+        "No-IBNN": 0.17672413793103448,
+        "IBNN": 0.1724137931034483,
+        "Fuzzy-GCD": 0.17672413793103448,
+        "Fuzzy-GCD + IBNN": 0.17672413793103448
+      },
+      "f1": {
+        "No-IBNN": 0.2867132867132867,
+        "IBNN": 0.2836879432624113,
+        "Fuzzy-GCD": 0.287719298245614,
+        "Fuzzy-GCD + IBNN": 0.287719298245614
+      }
+    },
+    {
+      "label": "TLS.GoogleServices",
+      "support": 215,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "Facebook",
+      "support": 196,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "OICQ",
+      "support": 163,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.WindowsUpdate",
+      "support": 127,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "Cassandra",
+      "support": 98,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "IMAPS",
+      "support": 98,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "HTTP.Google",
+      "support": 97,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "STUN.TelegramVoip",
+      "support": 88,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "HTTP.WindowsUpdate",
+      "support": 83,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "HTTP.Microsoft",
+      "support": 67,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "Teams",
+      "support": 67,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "STUN.WhatsAppCall",
+      "support": 63,
+      "accuracy": {
+        "No-IBNN": 0.1746031746031746,
+        "IBNN": 0.2222222222222222,
+        "Fuzzy-GCD": 0.1746031746031746,
+        "Fuzzy-GCD + IBNN": 0.1746031746031746
+      },
+      "f1": {
+        "No-IBNN": 0.275,
+        "IBNN": 0.3218390804597701,
+        "Fuzzy-GCD": 0.2682926829268293,
+        "Fuzzy-GCD + IBNN": 0.2619047619047619
+      }
+    },
+    {
+      "label": "TLS.WhatsAppFiles",
+      "support": 61,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.Dropbox",
+      "support": 46,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.Google",
+      "support": 44,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "TLS.PlayStore",
+      "support": 37,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    },
+    {
+      "label": "HTTP.OCSP",
+      "support": 32,
+      "accuracy": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      },
+      "f1": {
+        "No-IBNN": 0.0,
+        "IBNN": 0.0,
+        "Fuzzy-GCD": 0.0,
+        "Fuzzy-GCD + IBNN": 0.0
+      }
+    }
+  ],
+  "gcd_improvement": [
+    {
+      "label": "TLS.Facebook",
+      "vs_no_ibnn": 0.5845269496513489,
+      "vs_ibnn": 0.8017986441593048
+    },
+    {
+      "label": "Telegram",
+      "vs_no_ibnn": 0.3494623655913978,
+      "vs_ibnn": 0.0181525463783528
+    },
+    {
+      "label": "TLS.MS_OneDrive",
+      "vs_no_ibnn": 0.2826991222809791,
+      "vs_ibnn": -0.0538230187772109
+    },
+    {
+      "label": "QUIC",
+      "vs_no_ibnn": 0.2229990573695536,
+      "vs_ibnn": 0.171705411924399
+    },
+    {
+      "label": "TLS",
+      "vs_no_ibnn": 0.0859327900037789,
+      "vs_ibnn": 0.0698590011541013
+    },
+    {
+      "label": "HTTP.UbuntuONE",
+      "vs_no_ibnn": 0.0845921450151057,
+      "vs_ibnn": -0.1436830334302963
+    },
+    {
+      "label": "HTTP",
+      "vs_no_ibnn": -0.0064041313245634,
+      "vs_ibnn": 0.051504168280889
+    },
+    {
+      "label": "TLS.Teams",
+      "vs_no_ibnn": 0.0451127819548872,
+      "vs_ibnn": 0.0179721908783168
+    },
+    {
+      "label": "Unknown",
+      "vs_no_ibnn": 0.0070826921346487,
+      "vs_ibnn": -0.0100636789811218
+    },
+    {
+      "label": "STUN.TeamsCall",
+      "vs_no_ibnn": 0.0010060115323273,
+      "vs_ibnn": 0.0040313549832026
+    }
+  ],
+  "confusions": {
+    "No-IBNN": [
+      {
+        "true": "TLS",
+        "predicted": "QUIC",
+        "count": 2964
+      },
+      {
+        "true": "QUIC",
+        "predicted": "TLS",
+        "count": 2503
+      },
+      {
+        "true": "TLS.MS_OneDrive",
+        "predicted": "TLS",
+        "count": 930
+      },
+      {
+        "true": "HTTP",
+        "predicted": "TLS",
+        "count": 809
+      },
+      {
+        "true": "TLS.Facebook",
+        "predicted": "TLS",
+        "count": 807
+      },
+      {
+        "true": "TLS.Microsoft365",
+        "predicted": "TLS",
+        "count": 565
+      },
+      {
+        "true": "WhatsApp",
+        "predicted": "TLS",
+        "count": 509
+      },
+      {
+        "true": "Unknown",
+        "predicted": "TLS",
+        "count": 465
+      }
+    ],
+    "Fuzzy-GCD + IBNN": [
+      {
+        "true": "TLS",
+        "predicted": "QUIC",
+        "count": 1070
+      },
+      {
+        "true": "HTTP",
+        "predicted": "TLS",
+        "count": 790
+      },
+      {
+        "true": "TLS.MS_OneDrive",
+        "predicted": "TLS",
+        "count": 728
+      },
+      {
+        "true": "TLS.Microsoft365",
+        "predicted": "TLS",
+        "count": 709
+      },
+      {
+        "true": "TLS.Teams",
+        "predicted": "TLS",
+        "count": 550
+      },
+      {
+        "true": "WhatsApp",
+        "predicted": "TLS",
+        "count": 482
+      },
+      {
+        "true": "TLS",
+        "predicted": "DNS",
+        "count": 413
+      },
+      {
+        "true": "NTP",
+        "predicted": "DNS",
+        "count": 369
+      }
+    ]
+  }
+}

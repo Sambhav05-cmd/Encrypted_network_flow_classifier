@@ -1,0 +1,7 @@
+test_position,original_index,true_label,No-IBNN,IBNN,Fuzzy-GCD,Fuzzy-GCD + IBNN,all_four_correct,gcd_only
+7,27944,TLS.Facebook,TLS,TLS,TLS.Facebook,TLS.Facebook,False,True
+21,73660,QUIC,TLS,TLS,QUIC,QUIC,False,True
+91,183853,TLS,QUIC,QUIC,TLS,TLS,False,True
+285,143917,TLS.MS_OneDrive,TLS,TLS,TLS.MS_OneDrive,TLS.MS_OneDrive,False,True
+1084,221751,HTTP,TLS,TLS,HTTP,HTTP,False,True
+17592,143106,TLS.Teams,QUIC,QUIC,TLS.Teams,TLS.Teams,False,True

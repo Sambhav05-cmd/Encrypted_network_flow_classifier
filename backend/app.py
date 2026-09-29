@@ -4,6 +4,7 @@ import ast
 import json
 import math
 import io
+import re
 
 import numpy as np
 import pandas as pd
@@ -27,7 +28,8 @@ app = FastAPI(title="Network Traffic Classifier")
 
 app.add_middleware(
     CORSMiddleware,
-    # Any local port, so the Vite dev server works on 5173, 5174, etc.
+    # The pages are served by this app itself; this lets local tools on any port
+    # call the JSON API too.
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
@@ -99,7 +101,10 @@ z_dim = int(config["z_dim"])
 dropout = float(config["dropout"])
 
 
+# Convolutional feature extractor from the IBNN paper: 5x5, 5x5, 3x3, 3x3 convolutions.
+# Returns the last two layers' feature maps concatenated along the channel axis.
 class PaperConvEncoder(nn.Module):
+    # Four convolution layers with 32, 32, 64 and 64 channels.
     def __init__(self):
         super().__init__()
 
@@ -131,6 +136,8 @@ class PaperConvEncoder(nn.Module):
             padding=1
         )
 
+    # Applies the convolutions with ReLU and concatenates the outputs of the
+    # two 3x3 layers.
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
@@ -143,7 +150,10 @@ class PaperConvEncoder(nn.Module):
         )
 
 
+# Stochastic information-bottleneck layer: maps features to a Gaussian latent z
+# and estimates the mutual information I(X; Z) used in the IBNN loss.
 class IBLayer(nn.Module):
+    # Linear heads for the latent mean and log-variance.
     def __init__(self, in_dim, z_dim):
         super().__init__()
 
@@ -157,6 +167,8 @@ class IBLayer(nn.Module):
             z_dim
         )
 
+    # Samples z while training (uses the mean at inference) and estimates I(X; Z)
+    # from pairwise KL divergences between the batch's Gaussians.
     def forward(self, x, num_samples=1):
         mu = self.mu(x)
 
@@ -226,7 +238,10 @@ class IBLayer(nn.Module):
         return z, mi
 
 
+# Classifier with the information bottleneck: encoder, 128-unit layer, IB layer,
+# then 128- and 256-unit layers and the output. Returns logits and the MI estimate.
 class IBNN(nn.Module):
+    # Encoder, 128-unit extractor, IB layer and the 128/256-unit classifier head.
     def __init__(
         self,
         num_classes,
@@ -271,6 +286,7 @@ class IBNN(nn.Module):
             )
         )
 
+    # Returns class logits and the mutual-information estimate for the batch.
     def forward(
         self,
         x,
@@ -287,7 +303,10 @@ class IBNN(nn.Module):
         return self.classifier(z), mi
 
 
+# Same network as IBNN with the bottleneck layer removed, used by the No-IBNN
+# and Fuzzy-GCD models.
 class NoIBNN(nn.Module):
+    # Encoder, 128-unit extractor and the 128/256-unit classifier head.
     def __init__(
         self,
         num_classes,
@@ -326,6 +345,7 @@ class NoIBNN(nn.Module):
             )
         )
 
+    # Returns class logits.
     def forward(self, x):
         x = self.encoder(x).flatten(1)
         x = self.extract(x)
@@ -333,6 +353,8 @@ class NoIBNN(nn.Module):
         return self.classifier(x)
 
 
+# Builds the IBNN or No-IBNN architecture, loads trained weights from path and
+# switches the model to evaluation mode on the CPU.
 def load_model(path, ib=False):
     if ib:
         model = IBNN(
@@ -391,6 +413,8 @@ models = {
 }
 
 
+# Finds the size unit k (8-256 bytes) that packet sizes best fit as whole multiples and
+# returns [k, mean residual, residual / k, share of packets within the tolerance].
 def fuzzy_gcd_features(
     sizes,
     k_min=8,
@@ -452,6 +476,8 @@ def fuzzy_gcd_features(
     ], dtype=np.float32)
 
 
+# Turns an outer_splt_ps value (list, array or string like "[60, 1500]") into a
+# float array; unreadable or missing values give an empty array.
 def parse_packet_sizes(value):
     if isinstance(
         value,
@@ -480,6 +506,8 @@ def parse_packet_sizes(value):
         )
 
 
+# Zero-pads the 21 scaled features to 25 values and reshapes them into the
+# 1 x 1 x 5 x 5 tensor layout the convolutional models expect.
 def make_map(x):
     padded = np.zeros(
         25,
@@ -496,6 +524,8 @@ def make_map(x):
     )
 
 
+# Validates a one-row DataFrame and builds both model inputs: the baseline 5x5 map and
+# the Fuzzy-GCD map with four cells replaced by scaled GCD features.
 def prepare_flow(df):
     missing = [
         x
@@ -578,6 +608,8 @@ def prepare_flow(df):
     )
 
 
+# Runs one model on a prepared map and returns the predicted class index,
+# its probability and the full softmax distribution.
 def predict(model, x):
     with torch.no_grad():
         tensor = torch.tensor(
@@ -617,6 +649,8 @@ def predict(model, x):
     return prediction, confidence, probabilities
 
 
+# Runs the named model and formats its output as class name, index, confidence
+# and the probability of every class.
 def build_prediction(
     model_name,
     x
@@ -644,10 +678,12 @@ def build_prediction(
     }
 
 
+# Request body for /predict: a single flow as a column-name to value mapping.
 class FlowRequest(BaseModel):
     flow: dict
 
 
+# Reports that the server is up, with the class list and feature count.
 @app.get("/health")
 def health():
     return {
@@ -657,6 +693,7 @@ def health():
     }
 
 
+# Lists the 21 feature columns every uploaded flow must contain.
 @app.get("/features")
 def features():
     return {
@@ -665,6 +702,8 @@ def features():
     }
 
 
+# Classifies one flow sent as JSON and returns the four model outputs and
+# its Fuzzy-GCD features.
 @app.post("/predict")
 def predict_json(
     request: FlowRequest
@@ -709,7 +748,41 @@ def predict_json(
 MAX_BATCH_FLOWS = 500
 MAX_PACKET_SIZES = 512
 
+# Prepared single-flow files used by the dashboard simulation.
+SAMPLES_DIR = os.environ.get(
+    "FLOWLENS_SAMPLES_DIR",
+    os.path.join(BASE, "backend", "selected_flows")
+)
 
+# Written by analyse.py: <group>_<nn>_testpos_<position>_label_<label>.parquet
+SAMPLE_NAME = re.compile(
+    r"^(?P<group>all_correct|gcd_only)_(?P<number>\d+)"
+    r"_testpos_(?P<position>\d+)_label_(?P<label>.+)\.parquet$"
+)
+
+SAMPLE_GROUPS = {
+    "all_correct": "All four models classify these test flows correctly",
+    "gcd_only": "Only the two Fuzzy-GCD models classify these test flows correctly",
+    "other": "Other prepared flows"
+}
+
+# Flow metadata shown for context. None of it is a model input.
+CONTEXT_COLUMNS = [
+    "src_ip",
+    "src_port",
+    "dst_ip",
+    "dst_port",
+    "protocol",
+    "requested_server_name",
+    "application_category_name",
+    "bidirectional_packets",
+    "bidirectional_bytes",
+    "bidirectional_duration_ms"
+]
+
+
+# Runs all four models: the baseline map feeds No-IBNN and IBNN, the GCD map
+# feeds Fuzzy-GCD and Fuzzy-GCD + IBNN.
 def run_models(normal_map, gcd_map):
     return {
         "No-IBNN": build_prediction(
@@ -734,6 +807,8 @@ def run_models(normal_map, gcd_map):
     }
 
 
+# Returns a column's value as text, or an empty string when the column is
+# missing or empty.
 def optional_text(flow, column):
     if column not in flow.index or pd.isna(flow[column]):
         return ""
@@ -741,8 +816,28 @@ def optional_text(flow, column):
     return str(flow[column])
 
 
+# Collects connection details (endpoints, protocol, server name, packet count)
+# for display only; none of them are model inputs.
+def flow_context(flow):
+    context = {}
+
+    for column in CONTEXT_COLUMNS:
+        if column not in flow.index or pd.isna(flow[column]):
+            continue
+
+        value = flow[column]
+
+        if isinstance(value, (np.integer, np.floating)):
+            value = value.item()
+
+        context[column] = value if isinstance(value, (int, float)) else str(value)
+
+    return context
+
+
+# Runs the full pipeline on a one-row DataFrame and describes every stage:
+# labels, raw and scaled features, packet sizes, GCD features, predictions and maps.
 def classify_flow(df):
-    """Run the full pipeline on a one-row DataFrame and describe every stage."""
     (
         flow,
         normal_map,
@@ -774,6 +869,8 @@ def classify_flow(df):
             }
             for i, name in enumerate(feature_names)
         ],
+
+        "context": flow_context(flow),
 
         "packet_sizes": [
             float(x)
@@ -826,6 +923,8 @@ def classify_flow(df):
     }
 
 
+# Reads an uploaded .parquet or .csv file into a DataFrame, rejecting other
+# file types and unreadable files with a clear HTTP error.
 async def read_flow_file(file):
     name = (file.filename or "").lower()
 
@@ -860,6 +959,8 @@ async def read_flow_file(file):
         )
 
 
+# Turns an HTTPException's detail into one readable sentence, including the
+# names of any missing columns.
 def error_message(error):
     detail = error.detail
 
@@ -876,6 +977,7 @@ def error_message(error):
     return str(detail)
 
 
+# Classifies an uploaded file that must contain exactly one flow.
 @app.post("/predict-file")
 async def predict_file(
     file: UploadFile = File(...)
@@ -897,11 +999,12 @@ async def predict_file(
     }
 
 
+# Classifies every row of every uploaded file, up to MAX_BATCH_FLOWS flows, and
+# reports per file how many rows were read or why the file failed.
 @app.post("/predict-batch")
 async def predict_batch(
     files: List[UploadFile] = File(...)
 ):
-    """Classify every row of every uploaded file, up to MAX_BATCH_FLOWS flows."""
     file_reports = []
     flows = []
     skipped = 0
@@ -965,6 +1068,100 @@ async def predict_batch(
         "skipped": skipped,
         "limit": MAX_BATCH_FLOWS
     }
+
+
+# Lists the prepared .parquet files in SAMPLES_DIR, with the group, test position
+# and label parsed from each file name.
+def list_samples():
+    if not os.path.isdir(SAMPLES_DIR):
+        return []
+
+    samples = []
+
+    for name in sorted(os.listdir(SAMPLES_DIR)):
+        if not name.endswith(".parquet"):
+            continue
+
+        match = SAMPLE_NAME.match(name)
+
+        samples.append({
+            "file_name": name,
+            "group": match["group"] if match else "other",
+            "test_position": int(match["position"]) if match else None,
+            "label": match["label"] if match else "",
+            "size": os.path.getsize(os.path.join(SAMPLES_DIR, name))
+        })
+
+    return samples
+
+
+# Returns the prepared flow files the dashboard simulation can run.
+@app.get("/samples")
+def samples():
+    return {
+        "directory": os.path.relpath(SAMPLES_DIR, BASE),
+        "groups": SAMPLE_GROUPS,
+        "samples": list_samples()
+    }
+
+
+# Classifies one prepared flow file by name. Only names returned by list_samples
+# are accepted, so requests can't read other files.
+@app.post("/samples/{file_name}/classify")
+def classify_sample(file_name: str):
+    sample = next(
+        (x for x in list_samples() if x["file_name"] == file_name),
+        None
+    )
+
+    if sample is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No prepared flow named {file_name}"
+        )
+
+    df = pd.read_parquet(
+        os.path.join(SAMPLES_DIR, sample["file_name"])
+    )
+
+    flows = []
+
+    for row in range(min(len(df), MAX_BATCH_FLOWS)):
+        entry = {
+            "file_name": file_name,
+            "row": row,
+            "group": sample["group"],
+            "test_position": sample["test_position"]
+        }
+
+        try:
+            entry.update(
+                classify_flow(
+                    df.iloc[[row]].reset_index(drop=True)
+                )
+            )
+        except HTTPException as e:
+            entry["error"] = error_message(e)
+
+        flows.append(entry)
+
+    return {
+        **sample,
+        "flows": flows
+    }
+
+
+# The web interface: server-rendered pages, HTMX fragments and static files.
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+from backend.web.routes import create_web_router  # noqa: E402
+
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(BASE, "backend", "web", "static")),
+    name="static"
+)
+app.include_router(create_web_router(sys.modules[__name__]))
 
 
 if __name__ == "__main__":

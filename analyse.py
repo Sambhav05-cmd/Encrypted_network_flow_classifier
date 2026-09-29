@@ -99,6 +99,8 @@ replace_idx = np.array(
 )
 
 
+# Turns a packet-size sequence (array, list or string) into a float array,
+# keeping only non-negative numeric values.
 def parse_sequence(v):
     if isinstance(
         v,
@@ -146,6 +148,8 @@ def parse_sequence(v):
     )
 
 
+# Finds the size unit k (8-256 bytes) that packet sizes best fit as whole multiples and
+# returns [k, mean residual, residual / k, share of packets within the tolerance].
 def fuzzy_gcd_features(
     sizes,
     k_min=8,
@@ -207,6 +211,8 @@ def fuzzy_gcd_features(
     ], dtype=np.float32)
 
 
+# Zero-pads each row of scaled features to 25 values and reshapes the batch into
+# N x 1 x 5 x 5 feature maps.
 def make_map(X):
     out = np.zeros(
         (len(X), 25),
@@ -371,6 +377,8 @@ print(
 )
 
 
+# Predicts class indices for a batch of maps with a No-IBNN-style model,
+# in chunks of 256 flows.
 def predict_no_ib(
     model,
     X
@@ -412,6 +420,8 @@ def predict_no_ib(
     )
 
 
+# Predicts class indices for a batch of maps with an IBNN model, which returns
+# (logits, MI); only the logits are used.
 def predict_ib(
     model,
     X
@@ -548,6 +558,8 @@ results["gcd_only"] = (
 )
 
 
+# Picks up to count rows where condition_column is true, with at most one
+# row per true label, so the examples cover different applications.
 def select_distinct(
     table,
     condition_column,
@@ -673,6 +685,8 @@ results.to_csv(
 )
 
 
+# Writes each selected test flow to its own single-row .parquet file named
+# <prefix>_<nn>_testpos_<position>_label_<label>.parquet.
 def save_flows(
     selected,
     prefix

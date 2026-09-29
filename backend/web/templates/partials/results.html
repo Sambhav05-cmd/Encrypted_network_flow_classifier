@@ -1,0 +1,23 @@
+{# Shared results view: headline, insights, the filterable flow table and the
+   selected flow's breakdown. Used by the upload page and the simulation. #}
+<section class="results" aria-label="{{ title }}">
+  <div class="results-head">
+    <div>
+      <h2>{{ title }}</h2>
+      <p class="muted">{{ summary }} {{ agreement_text }}{% if errors %} {{ errors }} could not be classified.{% endif %}</p>
+      {% if note %}<p class="muted">{{ note }}</p>{% endif %}
+    </div>
+    <a class="btn" href="/runs/{{ run_id }}/csv" download>{{ icon("download") }}Download CSV</a>
+  </div>
+
+  {% if insights %}{% include "partials/insights.html" %}{% endif %}
+
+  <div class="section-title">
+    <h3>Every flow</h3>
+    <p class="muted">Select a row to open its full breakdown below the table.</p>
+  </div>
+
+  <div id="flow-table">{% include "partials/flow_table.html" %}</div>
+</section>
+
+<div id="flow-detail">{% if detail %}{% include "partials/flow_detail.html" %}{% endif %}</div>

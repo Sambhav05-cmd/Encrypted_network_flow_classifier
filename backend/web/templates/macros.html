@@ -1,0 +1,75 @@
+{# Shared building blocks for the pages. Tooltips: any element with data-tip (JSON
+   { title, rows: [{ color, label, value }] }) gets a hover and focus tip from app.js. #}
+
+{# Headline number with a label and a note; tone is accent, good or bad. #}
+{% macro stat_tile(item) %}
+<div class="stat {% if item.tone %}stat-{{ item.tone }}{% endif %}">
+  <span class="stat-label">{% if item.icon %}{{ icon(item.icon, 15) }}{% endif %}{{ item.label }}</span>
+  <strong class="stat-value">{{ item.value }}</strong>
+  {% if item.note %}<span class="stat-note">{{ item.note }}</span>{% endif %}
+</div>
+{% endmacro %}
+
+{# Card with an icon, title and subtitle wrapping one chart or insight. #}
+{% macro panel(title, subtitle="", glyph="", cls="") %}
+<section class="panel {{ cls }}">
+  <header class="panel-head">
+    {% if glyph %}<span class="panel-icon" aria-hidden="true">{{ icon(glyph, 17) }}</span>{% endif %}
+    <div>
+      <h3>{{ title }}</h3>
+      {% if subtitle %}<p class="muted">{{ subtitle }}</p>{% endif %}
+    </div>
+  </header>
+  {{ caller() }}
+</section>
+{% endmacro %}
+
+{# Legend for a list of { name, color } series; defaults to the four models. #}
+{% macro legend(series=MODELS) %}
+<div class="legend">
+  {% for s in series %}<span><i style="background: {{ s.color }}"></i>{{ s.name }}</span>{% endfor %}
+</div>
+{% endmacro %}
+
+{# Horizontal grouped bars from views.grouped_bars; show_values adds value labels. #}
+{% macro grouped_bars(rows, show_values=false) %}
+<div class="gbars {% if show_values %}gbars-values{% endif %}">
+  {% for row in rows %}
+  <div class="gbar-row">
+    <span class="gbar-label" title="{{ row.label }}">{{ row.label }}</span>
+    <div class="gbar-group">
+      {% for bar in row.bars %}
+      <div class="gbar-track" tabindex="0" aria-label="{{ bar.aria }}" data-tip='{{ row.tip|tojson }}'>
+        <div class="gbar" style="width: {{ bar.width }}%; background: {{ bar.color }}"></div>
+        {% if show_values %}<span class="gbar-value">{{ bar.value }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{# A model's prediction pill with a tick or cross against the true label. #}
+{% macro pred(cell) %}
+<span class="pred {% if cell.correct == true %}pred-right{% elif cell.correct == false %}pred-wrong{% endif %}" style="--model: {{ cell.model.color }}"{% if cell.title %} title="{{ cell.title }}"{% endif %}>
+  {% if cell.correct == true %}<span aria-label="Correct">{{ icon("check", 13) }}</span>{% elif cell.correct == false %}<span aria-label="Wrong">{{ icon("x", 13) }}</span>{% endif %}
+  {{ cell.class }}
+</span>
+{% endmacro %}
+
+{# Opens one slide with its number and anchor id. #}
+{% macro slide(id, number) %}
+<section id="{{ id }}" class="slide slide-{{ id }}" data-slide aria-labelledby="{{ id }}-title">
+  <span class="slide-number">{{ "%02d"|format(number) }} / 13</span>
+  {{ caller() }}
+</section>
+{% endmacro %}
+
+{# Slide heading with a small kicker above it. #}
+{% macro slide_title(id, kicker, title) %}
+<header class="slide-head">
+  <span class="slide-kicker">{{ kicker }}</span>
+  <h2 id="{{ id }}-title">{{ title }}</h2>
+</header>
+{% endmacro %}

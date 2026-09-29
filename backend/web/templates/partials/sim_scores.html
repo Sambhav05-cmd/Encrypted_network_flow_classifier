@@ -1,0 +1,13 @@
+{# Running accuracy of each model over the flows classified so far. #}
+<div class="sim-card">
+  <span class="sim-card-label">Live accuracy</span>
+  <ul class="live-scores">
+    {% for s in scores %}
+    <li style="--model: {{ s.model.color }}">
+      <span class="live-name"><i></i>{{ s.model.name }}</span>
+      <span class="live-bar" aria-hidden="true"><span style="width: {{ s.width }}%"></span></span>
+      <b>{{ s.text }}</b>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

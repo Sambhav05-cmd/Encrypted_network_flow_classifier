@@ -77,6 +77,8 @@ gcd_scaler = joblib.load(
 )
 
 
+# Finds the size unit k (8-256 bytes) that packet sizes best fit as whole multiples and
+# returns [k, mean residual, residual / k, share of packets within the tolerance].
 def fuzzy_gcd_features(
     sizes,
     k_min=8,
@@ -138,6 +140,8 @@ def fuzzy_gcd_features(
     ], dtype=np.float32)
 
 
+# Turns an outer_splt_ps value (list, array or string) into a float array;
+# unreadable or missing values give an empty array.
 def parse_packet_sizes(value):
     if isinstance(
         value,
@@ -166,6 +170,8 @@ def parse_packet_sizes(value):
         )
 
 
+# Zero-pads the scaled features to 25 values and reshapes them into the
+# 1 x 1 x 5 x 5 tensor the models expect.
 def make_map(x):
     padded = np.zeros(
         25,
@@ -182,6 +188,7 @@ def make_map(x):
     )
 
 
+# Runs one model and returns the predicted class index and its probability.
 def predict(model, x):
     with torch.no_grad():
         output = model(x)

@@ -1,0 +1,14 @@
+{# Simulation progress: flows done out of total, run state and elapsed time. #}
+{% set done = done|default(0) %}
+{% set total = total|default(samples|length) %}
+{% set status = status|default("idle") %}
+<div class="sim-card">
+  <span class="sim-card-label">Progress</span>
+  <div class="sim-count"><strong>{{ done }}</strong><span>/ {{ total }} flows</span></div>
+  <div class="meter meter-grad" aria-hidden="true"><div style="width: {{ (done / total * 100) if total else 0 }}%"></div></div>
+  <span class="sim-state sim-state-{{ status }}">
+    {% if status == "running" %}{{ icon("loader2", 14, "spin") }}{% elif status == "done" %}{{ icon("check", 14) }}{% endif %}
+    {{ {"running": "Running", "done": "Complete", "stopped": "Stopped", "error": "Failed"}.get(status, "Ready") }}
+    {% if seconds %}<span class="muted">{{ icon("timer", 13) }} {{ seconds }} s</span>{% endif %}
+  </span>
+</div>

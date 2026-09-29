@@ -1,0 +1,116 @@
+{# Batch-level insights: headline figures, model scorecards and analysis panels. #}
+{% from "macros.html" import stat_tile, panel, legend, grouped_bars %}
+<div class="insights">
+  <div class="kpis">{% for item in insights.kpis %}{{ stat_tile(item) }}{% endfor %}</div>
+
+  <div class="scorecards">
+    {% for c in insights.scorecards %}
+    <article class="scorecard" style="--model: {{ c.model.color }}">
+      <header class="scorecard-head">
+        <span class="swatch" style="background: {{ c.model.color }}"></span>
+        <h4>{{ c.model.name }}</h4>
+        <span class="scorecard-input">{{ c.model.input }}</span>
+      </header>
+      <div class="scorecard-main"><strong>{{ c.headline }}</strong><span>{{ c.headline_label }}</span></div>
+      <div class="meter" aria-hidden="true"><div style="width: {{ c.meter }}%"></div></div>
+      {% if c.reference %}<p class="scorecard-ref">{{ c.reference_label }}: <b>{{ c.reference }}</b></p>{% endif %}
+      <dl class="scorecard-stats">
+        {% if c.correct %}<div><dt>Correct</dt><dd>{{ c.correct }}</dd></div><div><dt>Mean confidence</dt><dd>{{ c.mean_confidence }}</dd></div>{% endif %}
+        <div><dt>Classes predicted</dt><dd>{{ c.classes }}</dd></div>
+        <div><dt>Below 50% sure</dt><dd>{{ c.unsure }}</dd></div>
+        {% if c.right_wrong %}<div class="wide"><dt>Confidence when right / wrong</dt><dd>{{ c.right_wrong }}</dd></div>{% endif %}
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="insight-grid">
+    {% call panel("What each model predicts", "Share of flows given each class, top 8 classes", "layers", "span-2") %}
+      {{ legend() }}
+      {{ grouped_bars(insights.classes) }}
+    {% endcall %}
+
+    {% call panel("Model agreement", "Share of flows where two models predict the same class", "git-compare-arrows") %}
+    <div class="matrix-wrap">
+      <div class="matrix" role="table" aria-label="Pairwise agreement">
+        <span role="columnheader"></span>
+        {% for m in MODELS %}<span class="matrix-head" role="columnheader"><i style="background: {{ m.color }}"></i>{{ m.name }}</span>{% endfor %}
+        {% for row in insights.matrix %}
+        <div class="matrix-row" role="row">
+          <span class="matrix-side" role="rowheader"><i style="background: {{ row.model.color }}"></i>{{ row.model.name }}</span>
+          {% for cell in row.cells %}
+          {% if cell.self %}<span role="cell" class="matrix-cell is-self">–</span>
+          {% else %}<span role="cell" tabindex="0" class="matrix-cell {{ 'is-strong' if cell.strong }}" style="background: color-mix(in srgb, var(--seq) {{ cell.mix }}%, var(--panel-solid))" data-tip='{{ cell.tip|tojson }}'>{{ cell.text }}</span>{% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endcall %}
+
+    {% call panel("Confidence distribution", "How sure each model is across all flows", "gauge") %}
+    <div class="hists">
+      {% for h in insights.histograms %}
+      <figure class="hist">
+        <figcaption><span><i style="background: {{ h.model.color }}"></i>{{ h.model.name }}</span><b>{{ h.mean }}</b></figcaption>
+        <div class="hist-bars">
+          {% for b in h.bins %}<span class="hist-slot" tabindex="0" aria-label="{{ b.aria }}" data-tip='{{ b.tip|tojson }}'><span class="hist-bar" style="height: {{ b.height }}%; background: {{ h.model.color }}"></span></span>{% endfor %}
+        </div>
+        <div class="hist-axis"><span>0%</span><span>100%</span></div>
+      </figure>
+      {% endfor %}
+    </div>
+    {% endcall %}
+
+    {% call panel("Fuzzy-GCD across flows", "The size unit k found for each flow", "sparkles", "" if insights.has_labels else "span-2") %}
+    <div class="gcd-summary">
+      <div class="mini-stats">
+        <div><span>Packets on a multiple of k</span><strong>{{ insights.gcd.within }}</strong></div>
+        <div><span>Mean residual</span><strong>{{ insights.gcd.residual }}</strong></div>
+      </div>
+      <p class="list-title">Most common k</p>
+      <ul class="bar-list">
+        {% for item in insights.gcd.top_k %}
+        <li tabindex="0" data-tip='{{ item.tip|tojson }}'>
+          <span class="bar-list-label">{{ item.k }} B</span>
+          <span class="bar-list-track"><span style="width: {{ item.width }}%"></span></span>
+          <span class="bar-list-value">{{ item.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endcall %}
+
+    {% if insights.effect %}
+    {% call panel("Effect of Fuzzy-GCD features", "Flows each GCD model gets right where its baseline is wrong, and the reverse", "split") %}
+    <div class="effect">
+      {% for pair in insights.effect.pairs %}
+      <div class="effect-row">
+        <span class="effect-label">{{ pair.label }}</span>
+        <span class="effect-chip effect-good"><b>+{{ pair.fixes }}</b> fixed</span>
+        <span class="effect-chip effect-bad"><b>−{{ pair.breaks }}</b> broken</span>
+      </div>
+      {% endfor %}
+      <div class="effect-callout">
+        <strong>{{ insights.effect.both }}</strong>
+        <span>{{ "flow is" if insights.effect.both == 1 else "flows are" }} classified correctly by both GCD models while both baselines get {{ "it" if insights.effect.both == 1 else "them" }} wrong.</span>
+      </div>
+    </div>
+    {% endcall %}
+    {% endif %}
+
+    {% if insights.mixups is not none %}
+    {% call panel("Most common mix-ups", "True label and the class most models chose instead", "arrow-right", "span-3") %}
+      {% if insights.mixups %}
+      <ul class="mixups">
+        {% for m in insights.mixups %}
+        <li><span class="mix-true" title="{{ m.true }}">{{ m.true }}</span><span aria-label="predicted as">{{ icon("arrow-right", 14) }}</span><span class="mix-pred" title="{{ m.predicted }}">{{ m.predicted }}</span><b>{{ m.count }}×</b></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-note">The majority vote matches the true label on every flow.</p>
+      {% endif %}
+    {% endcall %}
+    {% endif %}
+  </div>
+</div>

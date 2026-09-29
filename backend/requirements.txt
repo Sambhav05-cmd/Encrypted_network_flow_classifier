@@ -8,3 +8,4 @@ joblib
 torch
 pyarrow
 python-multipart
+jinja2

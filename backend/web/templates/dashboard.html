@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}FlowLens · Dashboard{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <span class="hero-badge"><span class="pulse" aria-hidden="true"></span>Four-model ensemble with Fuzzy-GCD and IBNN</span>
+
+    <h1>See what encrypted traffic <span class="grad-text">gives away</span></h1>
+
+    <p>
+      Payloads are encrypted, but packet sizes and timing still reveal the
+      application. Run the simulation to replay real test flows through all four
+      models and watch how each one decides.
+    </p>
+
+    <div class="hero-actions">
+      <button type="button" class="btn btn-primary btn-lg" data-sim-start {% if not samples %}disabled{% endif %}>
+        {{ icon("play", 18) }}Run simulation
+      </button>
+      <a class="btn btn-lg" href="/project">How it works</a>
+    </div>
+
+    <dl class="hero-stats">
+      <div><dt>Best test accuracy</dt><dd>{{ best_accuracy }}</dd></div>
+      <div><dt>Test flows</dt><dd>{{ "{:,}".format(results.test_set.flows) }}</dd></div>
+      <div><dt>Application classes</dt><dd>{{ class_count }}</dd></div>
+    </dl>
+  </div>
+
+  {% include "partials/packet_stream.html" %}
+</section>
+
+<section class="sim" id="simulation" aria-label="Simulation">
+  <div class="progress" aria-hidden="true" hidden></div>
+
+  <header class="sim-head">
+    <div>
+      <h2>Simulation</h2>
+      <p class="muted">
+        Replays prepared test flows from the dataset through the models, one flow
+        at a time, exactly as an uploaded file would be classified.
+      </p>
+    </div>
+    <span class="sim-source">{{ icon("folder-open", 15) }}{{ directory }}, {{ samples|length }} files</span>
+  </header>
+
+  <div class="sim-controls">
+    <div class="control">
+      <span class="control-label">Scenario</span>
+      <div class="segmented" role="group" aria-label="Scenario" data-choice="scenario">
+        {% for s in scenarios %}
+        <button type="button" value="{{ s.id }}" data-count="{{ s.count }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">
+          {{ s.label }}<span class="chip-count">{{ s.count }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="control">
+      <span class="control-label">Speed</span>
+      <div class="segmented" role="group" aria-label="Speed" data-choice="speed">
+        {% for key, label, _ in speeds %}
+        <button type="button" value="{{ key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sim-buttons">
+      <button type="button" class="btn btn-primary" data-sim-start {% if not samples %}disabled{% endif %}>
+        {{ icon("play") }}<span data-sim-label>Run {{ samples|length }} flows</span>
+      </button>
+      <button type="button" class="btn" data-sim-stop hidden>{{ icon("circle-stop") }}Stop</button>
+      <button type="button" class="btn btn-quiet" data-sim-reset hidden>{{ icon("rotate-ccw") }}Reset</button>
+    </div>
+  </div>
+
+  {% if not samples %}
+  <p class="empty-note">
+    No prepared flows found in {{ directory }}. Run <code>python analyse.py</code> or
+    copy single-flow .parquet files into that folder.
+  </p>
+  {% endif %}
+  <p class="form-error" role="alert" data-sim-error hidden></p>
+
+  <div class="sim-status">
+    <div data-sim-progress>{% include "partials/sim_progress.html" %}</div>
+    <div class="sim-card sim-now" data-sim-now>
+      <span class="sim-card-label">Now classifying</span>
+      <p class="muted sim-idle">Choose a scenario and run the simulation.</p>
+    </div>
+    <div data-sim-scores>{% include "partials/sim_scores.html" %}</div>
+  </div>
+
+  <div class="queue-preview" data-sim-preview>
+    <span class="sim-card-label">Up next</span>
+    <ul>
+      {% for sample in samples %}
+      <li class="tag tag-{{ sample.group }}" data-group="{{ sample.group }}" title="{{ sample.file_name }}">{{ sample.label or sample.file_name }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="feed-wrap" data-sim-feed-wrap hidden>
+    <span class="sim-card-label">Live feed</span>
+    <p class="muted feed-empty" data-sim-feed-empty>Classified flows appear here as they finish.</p>
+    <ol class="feed" aria-live="polite" data-sim-feed></ol>
+  </div>
+</section>
+
+<div id="sim-results"></div>
+
+<section class="context-band" aria-label="About the prepared flows">
+  {% set t = results.test_set %}
+  <div>
+    <h3>Where these flows come from</h3>
+    <p class="muted">
+      The prepared files are single flows taken from the {{ "{:,}".format(t.flows) }}-flow
+      test split. They are grouped by how the four models did on them in the full evaluation.
+    </p>
+  </div>
+  <dl class="context-stats">
+    {% for label, value, note in [
+      ("All four models correct", t.all_four_correct, (t.all_four_correct / t.flows)|pct ~ " of test flows"),
+      ("Only the GCD models correct", t.gcd_only_correct, (t.gcd_only_correct / t.flows)|pct ~ ", where Fuzzy-GCD helps"),
+      ("Only the baselines correct", t.baseline_only_correct, (t.baseline_only_correct / t.flows)|pct ~ ", where it hurts"),
+      ("All four wrong", t.all_four_wrong, (t.all_four_wrong / t.flows)|pct ~ " of test flows")
+    ] %}
+    <div><dt>{{ label }}</dt><dd>{{ "{:,}".format(value) }}</dd><span>{{ note }}</span></div>
+    {% endfor %}
+  </dl>
+</section>
+{% endblock %}

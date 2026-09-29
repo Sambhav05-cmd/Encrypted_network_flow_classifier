@@ -1,0 +1,183 @@
+{# Full breakdown of one flow, built by views.build_flow_detail. #}
+{% from "macros.html" import stat_tile, panel, legend, grouped_bars %}
+{% set f = detail.flow %}
+<section class="detail" aria-label="Flow {{ f.display_name }}">
+  <div class="detail-head">
+    <div>
+      <h2>{{ f.display_name }}</h2>
+      <p class="muted">
+        {{ f.file_name }}, row {{ f.row + 1 }}{% if detail.label %}. True label: <strong class="detail-label">{{ detail.label }}</strong>{% else %}. No true label in the file.{% endif %}
+      </p>
+    </div>
+    <button type="button" class="btn btn-quiet" data-close-detail>{{ icon("x") }}Close</button>
+  </div>
+
+  <div class="kpis kpis-4">{% for item in detail.summary %}{{ stat_tile(item) }}{% endfor %}</div>
+
+  <ol class="pipeline" aria-label="Inference pipeline">
+    {% for title, text in detail.pipeline %}
+    <li>
+      <span class="pipeline-num">{{ "%02d"|format(loop.index) }}</span>
+      <div><strong>{{ title }}</strong><small title="{{ text }}">{{ text }}</small></div>
+      {% if not loop.last %}{{ icon("chevron-right", 16, "pipeline-arrow") }}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+  <div class="votes">
+    {% for v in detail.votes %}
+    <article class="vote" style="--model: {{ v.model.color }}">
+      <div class="vote-top">
+        <h3 class="vote-model">{{ v.model.name }}</h3>
+        {% if v.correct == true %}<span class="verdict verdict-right">{{ icon("check", 14) }} Correct</span>
+        {% elif v.correct == false %}<span class="verdict verdict-wrong">{{ icon("x", 14) }} Wrong</span>{% endif %}
+      </div>
+      <p class="vote-class">{{ v.class }}</p>
+      <ol class="odds" aria-label="Top predictions">
+        {% for o in v.odds %}
+        <li>
+          <span class="odds-name">{{ o.name }}</span>
+          <span class="odds-value">{{ o.value }}</span>
+          <span class="odds-bar" aria-hidden="true"><span style="width: {{ o.width }}%"></span></span>
+        </li>
+        {% endfor %}
+      </ol>
+      <dl class="vote-stats">
+        <div><dt>Margin</dt><dd title="Gap between the top two classes">{{ v.margin }}</dd></div>
+        <div><dt>Uncertainty</dt><dd title="Normalised entropy: 0% is certain, 100% is a uniform guess">{{ v.entropy }}</dd></div>
+      </dl>
+      <p class="vote-note">{{ v.model.description }}</p>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="detail-grid">
+    {% call panel("How the models split their probability", "Every class that appears in any model's top three", "bar-chart3") %}
+      {{ legend() }}
+      {{ grouped_bars(detail.probabilities) }}
+    {% endcall %}
+
+    {% call panel("Traffic profile", "Raw flow statistics from the file", "arrow-down-up") %}
+    <div class="profile">
+      <div class="profile-grid">
+        {% for glyph, label, value, note in detail.profile %}
+        <div class="profile-item">
+          <span>{{ icon(glyph, 14) }}{{ label }}</span>
+          <strong>{{ value }}</strong>
+          {% if note %}<small>{{ note }}</small>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% set d = detail.direction %}
+      <div class="direction">
+        <div class="direction-labels"><span>Inbound {{ d["in"] }}</span><span>Outbound {{ d.out }}</span></div>
+        <div class="direction-bar" role="img" aria-label="Inbound {{ d.in_share }} of bytes">
+          <span class="dir-in" style="width: {{ d.width }}%"></span><span class="dir-out"></span>
+        </div>
+        <div class="direction-labels muted"><span>{{ d.in_share }}</span><span>{{ d.out_share }}</span></div>
+      </div>
+    </div>
+    {% endcall %}
+  </div>
+
+  <div class="block">
+    <div class="block-head">
+      <h3>Packet sizes and fuzzy-GCD</h3>
+      <p class="muted">
+        Each bar is one packet. Fuzzy-GCD looks for the unit k that packet sizes cluster
+        around. Teal bars sit within {{ detail.tolerance }} bytes of a multiple of k;
+        violet bars fall outside that tolerance.
+      </p>
+    </div>
+
+    {% set r = detail.rhythm %}
+    {% if r %}
+    <figure class="rhythm">
+      <svg viewBox="0 0 {{ r.width }} {{ r.height }}" role="img"
+           aria-label="{{ r.count }} packet sizes, largest {{ r.largest }} bytes; {{ r.within }} within {{ detail.tolerance }} bytes of a multiple of {{ r.k }}">
+        <defs>
+          <linearGradient id="rhythm-on" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: var(--on-1)" />
+            <stop offset="1" style="stop-color: var(--on-2)" stop-opacity="0.6" />
+          </linearGradient>
+          <linearGradient id="rhythm-off" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: var(--off-1)" />
+            <stop offset="1" style="stop-color: var(--off-2)" stop-opacity="0.6" />
+          </linearGradient>
+        </defs>
+        {% for y in r.lattice %}<line class="lattice" x1="{{ r.left }}" x2="{{ r.right_x }}" y1="{{ y }}" y2="{{ y }}" />{% endfor %}
+        {% for t in r.ticks %}
+        <line class="axis" x1="{{ r.left }}" x2="{{ r.right_x }}" y1="{{ t.y }}" y2="{{ t.y }}" />
+        <text class="tick" x="{{ r.left - 8 }}" y="{{ t.y + 4 }}" text-anchor="end">{{ t.label }}</text>
+        {% endfor %}
+        {% for b in r.bars %}
+        <rect fill="url(#rhythm-{{ 'on' if b.on else 'off' }})" rx="{{ b.rx }}" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}"><title>{{ b.title }}</title></rect>
+        {% endfor %}
+        <text class="tick" x="{{ r.left }}" y="{{ r.height - 6 }}">Packet 1</text>
+        <text class="tick" x="{{ r.right_x }}" y="{{ r.height - 6 }}" text-anchor="end">Packet {{ r.count }}</text>
+      </svg>
+      <figcaption class="muted">
+        {{ r.within }} of {{ r.count }} packets are within {{ detail.tolerance }} bytes of a multiple of k = {{ r.k }} bytes.
+        {{ "Faint lines mark each multiple of k." if r.draw_lattice else "The multiples of k are too close together to draw." }}
+      </figcaption>
+    </figure>
+    {% else %}
+    <p class="empty-note">This flow has no packet sizes, so all GCD features are zero.</p>
+    {% endif %}
+
+    <dl class="gcd-stats">
+      {% for term, value, note in detail.gcd_stats %}
+      <div><dt>{{ term }}</dt><dd>{{ value }}</dd><dd class="gcd-note">{{ note }}</dd></div>
+      {% endfor %}
+    </dl>
+  </div>
+
+  <div class="block">
+    <div class="block-head">
+      <h3>What the models received</h3>
+      <p class="muted">
+        The 21 flow features are scaled and laid out on a 5 × 5 grid (the last four
+        cells are padding). The Fuzzy-GCD models get the same grid with four cells
+        swapped for the GCD features.
+      </p>
+    </div>
+
+    <div class="inputs">
+      <div class="table-wrap">
+        <table class="features">
+          <thead>
+            <tr><th scope="col">Cell</th><th scope="col">Feature</th><th scope="col" class="num">Raw</th><th scope="col" class="num">Scaled</th></tr>
+          </thead>
+          <tbody>
+            {% for feature in detail.features %}
+            <tr class="{{ 'swapped' if feature.swap }}">
+              <td class="num muted">{{ feature.index }}</td>
+              <td><span title="{{ feature.name }}">{{ feature.label }}</span>{% if feature.swap %}<span class="swap-note">{{ feature.swap }}</span>{% endif %}</td>
+              <td class="num">{{ feature.raw }}</td>
+              <td class="num">{{ feature.scaled }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="maps">
+        {% for m in detail.maps %}
+        <figure class="map">
+          <figcaption><strong>{{ m.title }}</strong><span class="muted">{{ m.subtitle }}</span></figcaption>
+          <div class="grid5">
+            {% for c in m.cells %}
+            <div class="cell {{ 'cell-pad' if c.padding }} {{ 'cell-swapped' if c.swapped }} {{ 'cell-strong' if c.strong and not c.padding }}"{% if c.style %} style="{{ c.style }}"{% endif %} title="{{ c.title }}">{{ c.text }}</div>
+            {% endfor %}
+          </div>
+          <div class="map-legend muted">
+            <span><i style="background: var(--heat-neg)"></i> below training mean</span>
+            <span><i style="background: var(--heat-pos)"></i> above (full colour at ±{{ detail.heat_limit }} SD)</span>
+            {% if m.swapped %}<span><i class="legend-swapped"></i> GCD feature</span>{% endif %}
+          </div>
+        </figure>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
