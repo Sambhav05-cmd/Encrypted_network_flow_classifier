@@ -428,9 +428,11 @@ The trained model files and preprocessing artifacts are stored under `models/`.
 * FastAPI and Uvicorn
 * PyArrow (Parquet input)
 
-### Frontend
+### Frontend 
 
 * React
 * Vite
 * Plain CSS with switchable light and dark themes
 * Lucide icons
+
+By- Krisha, Saksham, Sambhav
